@@ -47,7 +47,7 @@
 %  See also  pop_loadstudy(), pop_preclust(), pop_clust()
 %
 % Authors: Arnaud Delorme, Hilit Serby, Scott Makeig, SCCN, INC, UCSD, July 22, 2005
-
+%
 %123456789012345678901234567890123456789012345678901234567890123456789012
 
 % Copyright (C) Arnaud Delorme, SCCN, INC, UCSD, July 22, 2005, arno@sccn.ucsd.edu
@@ -69,6 +69,9 @@
 % Coding notes: Useful information on functions and global variables used.
 
 % $Log: not supported by cvs2svn $
+% Revision 1.43  2006/03/18 14:46:15  arno
+% component button
+%
 % Revision 1.42  2006/03/12 02:17:07  arno
 % remove fontsize
 %
