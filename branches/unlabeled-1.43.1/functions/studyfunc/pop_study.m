@@ -59,7 +59,7 @@
 %
 % This program is distributed in the hope that it will be useful,
 % but WITHOUT ANY WARRANTY; without even the implied warranty of
-% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the  
 % GNU General Public License for more details.
 %
 % You should have received a copy of the GNU General Public License
@@ -69,6 +69,9 @@
 % Coding notes: Useful information on functions and global variables used.
 
 % $Log: not supported by cvs2svn $
+% Revision 1.43  2006/03/18 14:46:15  arno
+% component button
+%
 % Revision 1.42  2006/03/12 02:17:07  arno
 % remove fontsize
 %
