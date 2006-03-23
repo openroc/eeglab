@@ -69,6 +69,9 @@
 % Coding notes: Useful information on functions and global variables used.
 
 % $Log: not supported by cvs2svn $
+% Revision 1.43  2006/03/18 14:46:15  arno
+% component button
+%
 % Revision 1.42  2006/03/12 02:17:07  arno
 % remove fontsize
 %
