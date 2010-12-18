@@ -68,8 +68,12 @@ if nargin < 3 && ~isstr(STUDY)
     cb_listboxfact1 = 'pop_studydesign(''selectfact'', gcf, 0);';
     cb_listboxfact2 = 'pop_studydesign(''selectfact'', gcf, 1);';
     cb_selectsubj   = 'pop_studydesign(''selectsubj'', gcbf);';
-    cb_combinevals1 = 'pop_studydesign(''combinevals'', gcbf, 0);';
-    cb_combinevals2 = 'pop_studydesign(''combinevals'', gcbf, 1);';
+    %cb_combinevals1 = 'pop_studydesign(''combinevals'', gcbf, 0);';
+    %cb_combinevals2 = 'pop_studydesign(''combinevals'', gcbf, 1);';
+    cb_combinevals1 = [ 'warndlg2([''This function has been disabled because'' 10 ' ...
+                                   '''it was not fully functional. It has been'' 10 ' ...
+                                   '''fixed in EEGLAB 10.'' ]);' ];
+    cb_combinevals2 = cb_combinevals1;
     cb_lbval        = 'pop_studydesign(''updatedesign'', gcbf);';
     cb_selectdesign = 'pop_studydesign(''selectdesign'', gcbf);';
     cb_selectdata   = 'pop_studydesign(''selectdatatrials'', gcbf);';
