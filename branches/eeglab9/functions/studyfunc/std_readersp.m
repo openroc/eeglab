@@ -1,9 +1,9 @@
-% std_readersp() - load spectrum measures for data channels or 
+% std_readersp() - load ERSP measures for data channels or 
 %                  for all components of a specified cluster.
 %                  Called by plotting functions
 %                  std_envtopo(), std_erpplot(), std_erspplot(), ...
 % Usage:
-%         >> [STUDY, specdata, allfreqs, setinds, cinds] = ...
+%         >> [STUDY, erspdata, times, freqs] = ...
 %                   std_readersp(STUDY, ALLEEG, varargin);
 % Inputs:
 %       STUDY - studyset structure containing some or all files in ALLEEG
@@ -23,9 +23,9 @@
 %  STUDY    - updated studyset structure
 %  erspdata - [cell array] ERSP data (the cell array size is 
 %             condition x groups)
+%  times    - [float array] array of time points
 %  freqs    - [float array] array of frequencies
-%  setinds  - [cell array] datasets indices
-%  cinds    - [cell array] channel or component indices
+%  erspbase - [cell array] baseline values
 %
 % Author: Arnaud Delorme, CERCO, 2006-
 
@@ -73,18 +73,18 @@ end;
 
 STUDY = pop_erspparams(STUDY, 'default');
 [opt moreopts] = finputcheck( varargin, { ...
-    'type'          { 'string' 'cell' } { [] [] } '';
+    'type'          { 'string','cell' } { [] [] } '';
     'design'        'integer' []             STUDY.currentdesign;    
     'channels'      'cell'    []             {};
     'clusters'      'integer' []             [];
     'freqrange'     'real'    []             STUDY.etc.erspparams.freqrange;
     'timerange'     'real'    []             STUDY.etc.erspparams.timerange;
-    'rmsubjmean'    'string'  { 'on' 'off' } 'off';
-    'singletrials'  'string'  { 'on' 'off' } 'off';
-    'subbaseline'   'string'  { 'on' 'off' }  STUDY.etc.erspparams.subbaseline;
+    'rmsubjmean'    'string'  { 'on','off' } 'off';
+    'singletrials'  'string'  { 'on','off' } 'off';
+    'subbaseline'   'string'  { 'on','off' }  STUDY.etc.erspparams.subbaseline;
     'component'     'integer' []               [];
-    'infotype'      'string'  { 'ersp' 'itc' } 'ersp'; ...
-    'datatype'      'string'  { 'ersp' 'itc' } 'ersp'; ...
+    'infotype'      'string'  { 'ersp','itc' } 'ersp'; ...
+    'datatype'      'string'  { 'ersp','itc' } 'ersp'; ...
     'subject'       'string'  []               '' }, ...
     'std_readersp', 'ignore');
 if isstr(opt), error(opt); end;
@@ -99,6 +99,7 @@ dtype = opt.datatype;
 % find channel indices
 % --------------------
 if ~isempty(opt.channels)
+     allChangrp = lower({ STUDY.changrp.name });
      finalinds = std_chaninds(STUDY, opt.channels);
 else finalinds = opt.clusters;
 end;
@@ -111,7 +112,6 @@ for ind = 1:length(finalinds)
         tmpstruct = STUDY.changrp(finalinds(ind));
         allinds       = tmpstruct.allinds;
         setinds       = tmpstruct.setinds;
-        for i=1:length(allinds(:)), allinds{i} = -allinds{i}; end; % invert sign for reading
     else
         tmpstruct = STUDY.cluster(finalinds(ind));
         allinds       = tmpstruct.allinds;
@@ -167,6 +167,9 @@ for ind = 1:length(finalinds)
         %try     % this 'try' is a poor solution the problem of attempting
         % to read specific channel/component data that doesn't exist
         % called below by: allinds{c,g}(indtmp)
+        if strcmpi(dtype, 'erp'), opts = { 'timelimits', opt.timerange };
+        else                      opts = { 'freqlimits', opt.freqrange };
+        end;
         if strcmpi(opt.singletrials, 'on')
             for c = 1:nc
                 for g = 1:ng
@@ -182,7 +185,10 @@ for ind = 1:length(finalinds)
                         count{c, g} = 1;
                         for indtmp = 1:length(inds)
                             setindtmp = STUDY.design(opt.design).cell(setinds{c,g}(inds(indtmp))).dataset;
-                            [ tmpersp tmpparams alltimes allfreqs] = std_readfile(setindtmp, 'measure', 'timef', 'dataindices', allinds{c,g}(inds(indtmp)), 'timelimits', opt.timerange, 'freqlimits', opt.freqrange);
+                            tmpopts = { 'measure', 'timef' 'timelimits', opt.timerange, 'freqlimits', opt.freqrange };
+                            if ~isempty(opt.channels), [ tmpersp tmpparams alltimes allfreqs] = std_readfile(setindtmp, 'channels', allChangrp(allinds{c,g}(inds(indtmp))), tmpopts{:});
+                            else                       [ tmpersp tmpparams alltimes allfreqs] = std_readfile(setindtmp, 'components',          allinds{c,g}(inds(indtmp)),  tmpopts{:});
+                            end;
                             indices = [count{c, g}:count{c, g}+size(tmpersp,3)-1];
                             if indtmp == 1
                                  ersp{c, g} = permute(tmpersp, [2 1 3]);
@@ -201,11 +207,13 @@ for ind = 1:length(finalinds)
             for c = 1:nc
                 for g = 1:ng
                     if ~isempty(setinds{c,g})
-                        options = { 'dataindices', allinds{c,g}(:), 'timelimits', opt.timerange, 'freqlimits', opt.freqrange };
+                        if ~isempty(opt.channels), opts = { 'channels',  allChangrp(allinds{c,g}(:)), 'timelimits', opt.timerange, 'freqlimits', opt.freqrange };
+                        else                       opts = { 'components',           allinds{c,g}(:) , 'timelimits', opt.timerange, 'freqlimits', opt.freqrange };
+                        end;
                         if strcmpi(dtype, 'ersp') 
-                             erspbase{c, g}                             = std_readfile( setinfo(setinds{c,g}(:)), 'measure', 'erspbase', options{:});
-                             [ ersp{c, g} tmpparams alltimes allfreqs ] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', 'ersp'    , options{:});
-                        else [ ersp{c, g} tmpparams alltimes allfreqs ] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', 'itc'     , options{:});
+                             erspbase{c, g}                             = std_readfile( setinfo(setinds{c,g}(:)), 'measure', 'erspbase', opts{:});
+                             [ ersp{c, g} tmpparams alltimes allfreqs ] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', 'ersp'    , opts{:});
+                        else [ ersp{c, g} tmpparams alltimes allfreqs ] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', 'itc'     , opts{:});
                              ersp{c, g} = abs(ersp{c, g});
                         end;
                         fprintf('.');
@@ -363,29 +371,35 @@ end;
 function meanpowbase = computeerspbaseline(erspbase, singletrials)
 
     len = length(erspbase(:));
+    count = 0;
     for index = 1:len
-        if strcmpi(singletrials, 'on')
-            if index == 1, meanpowbase = abs(mean(erspbase{index}/len,3));
-            else           meanpowbase = meanpowbase + abs(mean(erspbase{index}/len,3));
+        if ~isempty(erspbase{index})
+            if strcmpi(singletrials, 'on')
+                if index == 1, meanpowbase = abs(mean(erspbase{index},3));
+                else           meanpowbase = meanpowbase + abs(mean(erspbase{index},3));
+                end;
+            else
+                if index == 1, meanpowbase = abs(erspbase{index});
+                else           meanpowbase = meanpowbase + abs(erspbase{index});
+                end;
             end;
-        else
-            if index == 1, meanpowbase = abs(erspbase{index}/len);
-            else           meanpowbase = meanpowbase + abs(erspbase{index}/len);
-            end;
+            count = count+1;
         end;
     end;
-    meanpowbase = reshape(meanpowbase  , [size(meanpowbase,1) 1 size(meanpowbase,2)]);
+    meanpowbase = reshape(meanpowbase  , [size(meanpowbase,1) 1 size(meanpowbase,2)])/count;
 
 % remove ERSP baseline
 % ---------------------
 function ersp = removeerspbaseline(ersp, erspbase, meanpowbase, tottrials)
     for g = 1:size(ersp,2)        % ng = number of groups
         for c = 1:size(ersp,1)
-            erspbasetmp = reshape(erspbase{c,g}, [size(meanpowbase,1) 1 size(meanpowbase,3)]);
-            if ~isempty(tottrials{c,g}), tmpmeanpowbase = repmat(meanpowbase, [1 size(ersp{c,g},2) tottrials{c,g}]);
-            else                         tmpmeanpowbase = repmat(meanpowbase, [1 size(ersp{c,g},2) 1]);
+            if ~isempty(erspbase{c,g}) && ~isempty(ersp{c,g})
+                erspbasetmp = reshape(erspbase{c,g}, [size(meanpowbase,1) 1 size(meanpowbase,3)]);
+                if ~isempty(tottrials{c,g}), tmpmeanpowbase = repmat(meanpowbase, [1 size(ersp{c,g},2) tottrials{c,g}]);
+                else                         tmpmeanpowbase = repmat(meanpowbase, [1 size(ersp{c,g},2) 1]);
+                end;
+                ersp{c,g} = ersp{c,g} - repmat(abs(erspbasetmp), [1 size(ersp{c,g},2) 1 1]) + tmpmeanpowbase;
             end;
-            ersp{c,g} = ersp{c,g} - repmat(abs(erspbasetmp), [1 size(ersp{c,g},2) 1 1]) + tmpmeanpowbase;
         end;
     end;
    
