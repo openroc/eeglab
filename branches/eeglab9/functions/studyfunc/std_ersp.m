@@ -143,16 +143,16 @@ end;
 
 [g timefargs] = finputcheck(options, { ...
                         'components'    'integer'     []      [];
-                        'channels'      { 'cell' 'integer' }  { [] [] }     {};
+                        'channels'      { 'cell','integer' }  { [] [] }     {};
                         'outputfile'    'string'      []      '';
                         'powbase'       'real'        []      [];
-                        'trialindices' { 'integer' 'cell' } []         [];
-                        'savetrials'    'string'      { 'on' 'off' }      'off';
-                        'plot'          'string'      { 'on' 'off' }      'off';
-                        'recompute'     'string'      { 'on' 'off' }      'off';
-                        'getparams'     'string'      { 'on' 'off' }      'off';
+                        'trialindices' { 'integer','cell' }   []         [];
+                        'savetrials'    'string'      { 'on','off' }      'off';
+                        'plot'          'string'      { 'on','off' }      'off';
+                        'recompute'     'string'      { 'on','off' }      'off';
+                        'getparams'     'string'      { 'on','off' }      'off';
                         'timewindow'    'real'        []      [];
-                        'fileout'       'string'  []         '';
+                        'fileout'       'string'      []      '';
                         'timelimits'    'real'        []      [EEG(1).xmin EEG(1).xmax]*1000;
                         'cycles'        'real'        []      [3 .5];
                         'padratio'      'real'        []      1;
@@ -161,7 +161,7 @@ end;
                         'interp'        'struct'      { }     struct([]);
                         'freqscale'     'string'      []      'log';
                         'alpha'         'real'        []      NaN;
-                        'type'          'string'      { 'ersp' 'itc' 'both' 'ersp&itc' }  'both'}, 'std_ersp', 'ignore');
+                        'type'          'string'      { 'ersp','itc','both','ersp&itc' }  'both'}, 'std_ersp', 'ignore');
 if isstr(g), error(g); end;
 if isempty(g.trialindices), g.trialindices = cell(length(EEG)); end;
 if ~iscell(g.trialindices), g.trialindices = { g.trialindices }; end;
@@ -342,12 +342,25 @@ for k = 1:length(g.indices)  % for each (specified) component
     
     % Run timef() to get ERSP
     % ------------------------
-    timefdata  = reshape(X(k,pointrange,:), 1, length(pointrange)*size(X,3));
+    timefdata  = reshape(X(g.indices(k),pointrange,:), 1, length(pointrange)*size(X,3));
     if strcmpi(g.plot, 'on'), figure; end;
+    flagEmpty = 0;
+    if isempty(timefdata)
+        flagEmpty = 1;
+        timefdata = rand(1,length(pointrange));
+    end;
     [logersp,logitc,logbase,times,logfreqs,logeboot,logiboot,alltfX] ...
           = newtimef( timefdata, length(pointrange), g.timelimits, EEG(1).srate, tmpparams{2:end});
     %figure; newtimef( TMP.data(32,:), EEG.pnts, [EEG.xmin EEG.xmax]*1000, EEG.srate, cycles, 'freqs', freqs);
     %figure; newtimef( timefdata, length(pointrange), g.timelimits, EEG.srate, cycles, 'freqs', freqs);
+    if flagEmpty
+        logersp = [];
+        logitc  = [];
+        logbase = [];
+        logeboot = [];
+        logiboot = [];
+        alltfX   = [];
+    end;
     if strcmpi(g.plot, 'on'), return; end;
 
     all_ersp = setfield( all_ersp, [ prefix int2str(g.indices(k)) '_ersp'     ], single(logersp ));
@@ -363,17 +376,27 @@ end
 
 % Save ERSP into file
 % -------------------
+for index = 1:length(EEG)
+    filenames{index} = fullfile(EEG(index).filepath, EEG(index).filename);
+end;
+if length(filenames) == 1, filenames = filenames{1}; end;
 all_ersp.freqs      = logfreqs;
 all_ersp.times      = times;
 all_ersp.datatype   = 'ERSP';
+all_ersp.datafile   = filenames;
+all_ersp.trialindices = g.trialindices;
 all_itc.freqs       = logfreqs;
 all_itc.times       = times;
 all_itc.parameters  = parameters;
 all_itc.datatype    = 'ITC';
+all_itc.datafile    = filenames;
+all_itc.trialindices = g.trialindices;
 all_trials.freqs    = logfreqs;
 all_trials.times    = times;
 all_trials.parameters = { options{:} parameters{:} };
 all_trials.datatype   = 'TIMEF';
+all_trials.datafile   = filenames;
+all_trials.trialindices = g.trialindices;
 
 if powbaseexist
     all_ersp.parameters = { parameters{:}, 'baseline', g.powbase };
@@ -386,9 +409,10 @@ if ~isempty(g.channels)
         all_itc.chanlabels    = { g.interp(g.indices).labels };
         all_trials.chanlabels = { g.interp(g.indices).labels };
     elseif ~isempty(EEG(1).chanlocs)
-        all_ersp.chanlabels   = { EEG(1).chanlocs(g.indices).labels };
-        all_itc.chanlabels    = { EEG(1).chanlocs(g.indices).labels };
-        all_trials.chanlabels = { EEG(1).chanlocs(g.indices).labels };
+        tmpchanlocs = EEG(1).chanlocs;
+        all_ersp.chanlabels   = { tmpchanlocs(g.indices).labels };
+        all_itc.chanlabels    = { tmpchanlocs(g.indices).labels };
+        all_trials.chanlabels = { tmpchanlocs(g.indices).labels };
     end;
 end;
 
