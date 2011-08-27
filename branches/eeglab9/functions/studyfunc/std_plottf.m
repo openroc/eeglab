@@ -96,13 +96,13 @@ opt = finputcheck( varargin, { 'titles'         'cell'   []              cell(20
                                'threshold'      'real'   []              NaN;
                                'unitx'          'string' []              'ms'; % just for titles
                                'chanlocs'       'struct' []              struct('labels', {});
-                               'freqscale'      'string' { 'log','linear','auto' }  'auto';
+                               'freqscale'      'string' { 'log' 'linear' 'auto' }  'auto';
                                'groupstats'     'cell'   []              {};
                                'condstats'      'cell'   []              {};
                                'interstats'     'cell'   []              {};                               
-                               'maskdata'       'string' { 'on','off' }   'off';
-                               'datatype'       'string' { 'ersp','itc' }    'ersp';
-                               'plotmode'       'string' { 'normal','condensed' }  'normal' }, 'std_plottf');
+                               'maskdata'       'string' { 'on' 'off' }   'off';
+                               'datatype'       'string' { 'ersp' 'itc' }    'ersp';
+                               'plotmode'       'string' { 'normal' 'condensed' }  'normal' }, 'std_plottf');
 if isstr(opt), error(opt); end;
 if all(all(cellfun('size', data, 3)==1))               opt.singlesubject = 'on'; end;
 
@@ -180,10 +180,12 @@ if ~isnan(opt.threshold) && ( ~isempty(opt.groupstats) || ~isempty(opt.condstats
     pinterplot = pinter;
     maxplot = 1;
 else
+    warning off;
     for ind = 1:length(opt.condstats),  pcondplot{ind}  = -log10(opt.condstats{ind}); end;
     for ind = 1:length(opt.groupstats), pgroupplot{ind} = -log10(opt.groupstats{ind}); end;
     if ~isempty(pinter), pinterplot = -log10(pinter); end;
     maxplot = 3;
+    warning on;
 end;
 
 % -------------------------------
@@ -225,7 +227,7 @@ for c = 1:nc
                 end;
             end;
 
-            tftopo( tmpplot, timevals, freqs, 'title', opt.titles{c,g}, options{:}); 
+            tftopo( tmpplot', timevals, freqs, 'title', opt.titles{c,g}, options{:}); 
                 
             if isempty(opt.caxis) && ~isempty(tmpc)
                 warning off;
@@ -246,7 +248,7 @@ for c = 1:nc
         % -------------------------
         if g == ng && ng > 1 && ~isempty(opt.groupstats) && ~isinf(pgroupplot{c}(1)) && ~statmask
             hdl(c,g+1) = mysubplot(nc+addr, ng+addc, g + 1 + (c-1)*(ng+addc), opt.transpose);
-            tftopo( pgroupplot{c}, timevals, freqs, 'title', opt.titles{c,g+1}, options{:});
+            tftopo( pgroupplot{c}', timevals, freqs, 'title', opt.titles{c,g+1}, options{:});
             caxis([-maxplot maxplot]);
         end;
     end;
@@ -257,7 +259,7 @@ for g = 1:ng
     % -----------------------------
     if ~isempty(opt.condstats) && ~isinf(pcondplot{g}(1)) && ~statmask && nc > 1
         hdl(nc+1,g) = mysubplot(nc+addr, ng+addc, g + c*(ng+addc), opt.transpose);
-        tftopo( pcondplot{g}, timevals, freqs, 'title', opt.titles{nc+1,g}, options{:});
+        tftopo( pcondplot{g}', timevals, freqs, 'title', opt.titles{nc+1,g}, options{:});
         caxis([-maxplot maxplot]);
     end;
 end;
@@ -280,7 +282,7 @@ end;
 % ---------------------------------------
 if ~isempty(opt.groupstats) && ~isempty(opt.condstats) && ng > 1 && nc > 1
     hdl(nc+1,ng+1) = mysubplot(nc+addr, ng+addc, g + 1 + c*(ng+addr), opt.transpose);
-    tftopo( pinterplot,  timevals, freqs, 'title', opt.titles{nc+1,ng+1}, options{:});
+    tftopo( pinterplot',  timevals, freqs, 'title', opt.titles{nc+1,ng+1}, options{:});
     caxis([-maxplot maxplot]);
     ylabel('');
 end;    
