@@ -111,16 +111,16 @@ function [ STUDY, ALLEEG ] = std_precomp(STUDY, ALLEEG, chanlist, varargin)
         Ncond = 1;
     end
 
-    g = finputcheck(varargin, { 'erp'         'string'  { 'on' 'off' }     'off';
-                                'interp'      'string'  { 'on' 'off' }     'off';
-                                'ersp'        'string'  { 'on' 'off' }     'off';
-                                'recompute'   'string'  { 'on' 'off' }     'off';
-                                'spec'        'string'  { 'on' 'off' }     'off';
-                                'scalp'       'string'  { 'on' 'off' }     'off';
-                                'allcomps'    'string'  { 'on' 'off' }     'off';
-                                'itc'         'string'  { 'on' 'off' }     'off';
-                                'savetrials'  'string'  { 'on' 'off' }     'off';
-                                'rmicacomps'  'string'  { 'on' 'off' }     'off';
+    g = finputcheck(varargin, { 'erp'         'string'  { 'on','off' }     'off';
+                                'interp'      'string'  { 'on','off' }     'off';
+                                'ersp'        'string'  { 'on','off' }     'off';
+                                'recompute'   'string'  { 'on','off' }     'off';
+                                'spec'        'string'  { 'on','off' }     'off';
+                                'scalp'       'string'  { 'on','off' }     'off';
+                                'allcomps'    'string'  { 'on','off' }     'off';
+                                'itc'         'string'  { 'on','off' }     'off';
+                                'savetrials'  'string'  { 'on','off' }     'off';
+                                'rmicacomps'  'string'  { 'on','off' }     'off';
                                 'design'      'integer' []                 STUDY.currentdesign;
                                 'rmclust'     'integer' []                 [];
                                 'rmbase'      'integer' []                 [];
@@ -149,10 +149,10 @@ function [ STUDY, ALLEEG ] = std_precomp(STUDY, ALLEEG, chanlist, varargin)
         end;
     end;
     if isempty(chanlist)
-        alllocs = eeg_mergelocs(ALLEEG(:).chanlocs);
+        alllocs = eeg_mergelocs(ALLEEG.chanlocs);
         chanlist = { alllocs.labels };
     elseif ~isnumeric(chanlist{1})
-        alllocs = eeg_mergelocs(ALLEEG(:).chanlocs);
+        alllocs = eeg_mergelocs(ALLEEG.chanlocs);
         [tmp c1 c2] = intersect( lower({ alllocs.labels }), lower(chanlist));
         [tmp c2] = sort(c2);
         alllocs = alllocs(c1(c2));
@@ -184,7 +184,9 @@ function [ STUDY, ALLEEG ] = std_precomp(STUDY, ALLEEG, chanlist, varargin)
     if strcmpi(g.erp, 'on')
         % check dataset consistency
         % -------------------------
-        if length(unique([ALLEEG([STUDY.design(g.design).cell.dataset]).pnts])) > 1
+        allPnts = [ALLEEG([STUDY.design(g.design).cell.dataset]).pnts];
+        if iscell(allPnts), allPnts = [ allPnts{:} ]; end;
+        if length(unique(allPnts)) > 1
             error([ 'Cannot compute ERPs because datasets' 10 'do not have the same number of data points' ])
         end;
         
@@ -241,8 +243,8 @@ function [ STUDY, ALLEEG ] = std_precomp(STUDY, ALLEEG, chanlist, varargin)
             found = [];
             ind1 = STUDY.datasetinfo(index).index;
             inds = strmatch(STUDY.datasetinfo(index).subject, { STUDY.datasetinfo(1:index-1).subject });
-            for index2 = inds'
-                ind2 = STUDY.datasetinfo(index2).index;
+            for index2 = 1:length(inds)
+                ind2 = STUDY.datasetinfo(inds(index2)).index;
                 if isequal(ALLEEG(ind1).icawinv, ALLEEG(ind2).icawinv)
                     found = ind2;
                 end;
@@ -273,7 +275,9 @@ function [ STUDY, ALLEEG ] = std_precomp(STUDY, ALLEEG, chanlist, varargin)
     if strcmpi(g.ersp, 'on') | strcmpi(g.itc, 'on')
         % check dataset consistency
         % -------------------------
-        if length(unique([ALLEEG([STUDY.design(g.design).cell.dataset]).pnts])) > 1
+        allPnts = [ALLEEG([STUDY.design(g.design).cell.dataset]).pnts];
+        if iscell(allPnts), allPnts = [ allPnts{:} ]; end;
+        if length(unique(allPnts)) > 1
             error([ 'Cannot compute ERSPs/ITCs because datasets' 10 'do not have the same number of data points' ])
         end;
         
@@ -381,14 +385,18 @@ function [ STUDY, ALLEEG ] = std_precomp(STUDY, ALLEEG, chanlist, varargin)
         if strcmpi(g.interp, 'on')
             tmpchanlist = chanlist;
             allocs = eeg_mergelocs(ALLEEG.chanlocs);
-            [tmp ind1 ind2] = intersect({allocs.labels}, chanlist);
-            opts = { opts{:} 'interp' allocs(ind1) };
+            [tmp1 tmp2 neworder] = intersect( {allocs.labels}, chanlist);
+            [tmp1 ordertmp2] = sort(tmp2);
+            neworder = neworder(ordertmp2);
+            opts = { opts{:} 'interp' allocs(neworder) };
         else
             newchanlist = [];
-            chanlocs = { ALLEEG(idat(1)).chanlocs.labels };
+            tmpchanlocs = ALLEEG(idat(1)).chanlocs;
+            chanlocs = { tmpchanlocs.labels };
             for i=1:length(chanlist)
-                newchanlist = [ newchanlist strmatch(chanlist(i), chanlocs, 'exact') ];
+                newchanlist = [ newchanlist strmatch(chanlist{i}, chanlocs, 'exact') ];
             end;
-            tmpchanlist = { ALLEEG(idat(1)).chanlocs(newchanlist).labels };
+            tmpchanlocs =  ALLEEG(idat(1)).chanlocs;
+            tmpchanlist = { tmpchanlocs(newchanlist).labels };
         end;
         
