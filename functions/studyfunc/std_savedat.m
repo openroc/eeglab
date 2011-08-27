@@ -23,9 +23,7 @@
 function std_savedat( tmpfile, structure)
 
     delims = find( tmpfile == '.');
-    if ~isfield(structure, 'datafile')
-        structure.datafile = [ tmpfile(1:delims(end)-1) '.set' ];
-    end;
+    structure.datafile = [ tmpfile(1:delims(end)-1) '.set' ];
     v = version;
     
     % fix reading problem (bug 764)
