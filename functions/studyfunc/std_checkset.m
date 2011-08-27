@@ -209,6 +209,15 @@ for design = 1:length(STUDY.design)
             end;
         end;
     end;
+    % check for duplicate entries in filebase
+    % ---------------------------------------
+    try
+        if length( { STUDY.design(design).cell.filebase } ) > length(unique({ STUDY.design(design).cell.filebase }))
+           if ~isempty(findstr('design_', STUDY.design(design).cell(1).filebase))
+               warndlg2(sprintf('Duplicate entry detected in Design %d, download EEGLAB 10 to fix the problem', design));
+           end
+        end;
+    catch, end;
 end;
 
 % check that ICA is present and if it is update STUDY.datasetinfo
