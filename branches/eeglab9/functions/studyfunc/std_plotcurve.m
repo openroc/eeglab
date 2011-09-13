@@ -237,14 +237,15 @@ for c = 1:ncplot
             % -----------------------------------------
             dimreduced_sizediffers = 0;
             if ncplot ~= nc && ngplot ~= ng
-                for cc = 1:length(data,1)
-                    for gg = 1:length(data,2)
+                for cc = 1:size(data,1)
+                    for gg = 1:size(data,2)
                         tmptmpdata = real(data{cc,gg});
                         if cc == 1, tmpdata = zeros([size(tmptmpdata) length(data(:))]); end;
                         if ndims(tmptmpdata) == 3, tmpdata(:,:,:,gg+((c-1)*ng)) = tmptmpdata;
                         else                       tmpdata(:,:,gg+((cc-1)*ng))  = tmptmpdata;
                         end;
                     end;
+                    if isstr(leg), leg = {}; end;
                     if isempty(opt.condnames{c}) || isempty(opt.groupnames{g}), leg{(cc-1)*ng+gg} = [ opt.condnames{c} opt.groupnames{g} ];
                     else                                                        leg{(cc-1)*ng+gg} = [ opt.condnames{c} ', ' opt.groupnames{g} ];
                     end;
