@@ -337,16 +337,16 @@ for inddataset = 1:length(ALLEEG)
                     [EEG res] = eeg_checkset(EEG);
                     if isempty(EEG.event), return; end;
                     
-                    % convert type to numeric if necessary
-                    % ------------------------------------
-                    if isfield(EEG.event, 'type') 
+                    % check events (slow)
+                    % ------------
+                    if isfield(EEG.event, 'type')
                         tmpevent = EEG.event;
-                        num = cellfun(@isnumeric, {tmpevent.type});
-                        if any(cellfun(@isnumeric, {tmpevent.type}))
+                        if ~all(cellfun(@ischar, { tmpevent.type })) && ~all(cellfun(@isnumeric, { tmpevent.type }))
                             disp('Warning: converting all event types to strings');
                             for ind = 1:length(EEG.event)
                                 EEG.event(ind).type = num2str(EEG.event(ind).type);
                             end;
+                            EEG = eeg_checkset(EEG, 'eventconsistency');
                         end;
                     end;
                     
@@ -548,7 +548,7 @@ for inddataset = 1:length(ALLEEG)
                             end;
                             if ~isequal(TMPEEG.event, EEG.event)
                                 EEG = TMPEEG;
-                                disp('Event resorted by increasing latencies. Some event indices have changed.');
+                                disp('Event resorted by increasing latencies.');
                             end;
                         catch,
                             disp('eeg_checkset: problem when attempting to resort event latencies.');
@@ -1064,8 +1064,8 @@ for inddataset = 1:length(ALLEEG)
         if isfield(EEG.chaninfo, 'nosedir')
             if strcmpi(EEG.chaninfo.nosedir, '+x')
                 rotate = 0;
-            else
-                disp('EEG checkset: rotating channels and seting noze direction to default +X.');
+            elseif all(isfield(EEG.chanlocs,{'X','Y','theta','sph_theta'}))
+                disp('EEG checkset note for expert users: Noze direction now set to default +X in EEG.chanlocs and EEG.dipfit.');
                 if strcmpi(EEG.chaninfo.nosedir, '+y')
                     rotate = 270;
                 elseif strcmpi(EEG.chaninfo.nosedir, '-x')
@@ -1185,8 +1185,8 @@ for inddataset = 1:length(ALLEEG)
     % check events (fast)
     % ------------
     if isfield(EEG.event, 'type')
-        tmpevent = EEG.event(1:min(length(EEG.event), 10));
-        if any(cellfun(@isnumeric, { tmpevent.type }));
+        tmpevent = EEG.event(1:min(length(EEG.event), 100));
+        if ~all(cellfun(@ischar, { tmpevent.type })) && ~all(cellfun(@isnumeric, { tmpevent.type }))
             disp('Warning: converting all event types to strings');
             for ind = 1:length(EEG.event)
                 EEG.event(ind).type = num2str(EEG.event(ind).type);
@@ -1197,7 +1197,7 @@ for inddataset = 1:length(ALLEEG)
     
     % EEG.times (only for epoched datasets)
     % ---------
-    if (EEG.trials > 1)
+    if ~isfield(EEG, 'times') || isempty(EEG.times) || length(EEG.times) ~= EEG.pnts
         EEG.times = linspace(EEG.xmin*1000, EEG.xmax*1000, EEG.pnts);
     end;
     
@@ -1236,8 +1236,8 @@ for inddataset = 1:length(ALLEEG)
             EEG.reject = setfield(EEG.reject, elecfield, zeros(nbchan, length(getfield(EEG.reject, name)))); res = com;
         end;
     end;
-    if ~isfield(EEG.reject, 'rejglobal')        EEG.reject.rejglobal = []; res = com; end;
-    if ~isfield(EEG.reject, 'rejglobalE')        EEG.reject.rejglobalE = []; res = com; end;
+    if ~isfield(EEG.reject, 'rejglobal')        EEG.reject.rejglobal  = []; res = com; end;
+    if ~isfield(EEG.reject, 'rejglobalE')       EEG.reject.rejglobalE = []; res = com; end;
     
     % default colors for rejection
     % ----------------------------
