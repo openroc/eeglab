@@ -156,14 +156,15 @@ for ind = 1:length(finalinds) % scan channels or components
     if ~dataread
         % reserve arrays
         % --------------
-        alldata  = cell( nc, ng );
+        alldata        = cell( nc, ng );
+        setinfoIndices = cell( nc, ng );
         tmpind  = 1; while(isempty(setinds{tmpind})), tmpind = tmpind+1; end;
         setinfo = STUDY.design(opt.design).cell;
         tmpchanlocs = ALLEEG(setinfo(1).dataset(1)).chanlocs;
         chanlab = { tmpchanlocs.labels };
         nonemptyindex = ~cellfun(@isempty, allinds);
         nonemptyindex = find(nonemptyindex(:));
-        optGetparams = { 'measure', dtype, 'getparamonly', 'on', 'singletrials', opt.singletrials, 'timelimits', opt.timerange, 'freqlimits', opt.freqrange };
+        optGetparams = { 'measure', dtype, 'getparamonly', 'on', 'singletrials', opt.singletrials, 'timelimits', opt.timerange, 'freqlimits', opt.freqrange};
         if ~isempty(opt.channels), [ tmp params xvals] = std_readfile(setinfo(setinds{nonemptyindex(1)}(1)), optGetparams{:}, 'channels'  , allChangrp(allinds{nonemptyindex(1)}(1)));
         else                       [ tmp params xvals] = std_readfile(setinfo(setinds{nonemptyindex(1)}(1)), optGetparams{:}, 'components', allinds{nonemptyindex(1)}(1));
         end;
@@ -180,14 +181,24 @@ for ind = 1:length(finalinds) % scan channels or components
                 errordlg2('No single trial data - recompute data files');
                 datavals = [];
                 return;
-            end;
+            end;            
             opts        = { opts{:} 'singletrials' 'on' };
-        end;
-        for c = 1:nc
-            for g = 1:ng
-                if ~isempty(setinds{c,g})
-                    if ~isempty(opt.channels), alldata{c, g} = std_readfile( setinfo(setinds{c,g}(:)), 'measure', dtype, opts{:}, 'channels'  , opt.channels(ind));
-                    else                       alldata{c, g} = std_readfile( setinfo(setinds{c,g}(:)), 'measure', dtype, opts{:}, 'components', allinds{c,g});
+            for c = 1:nc
+                for g = 1:ng
+                    if ~isempty(setinds{c,g})
+                        if ~isempty(opt.channels), [alldata{c, g} z z z z setinfoIndices{c, g}] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', dtype, opts{:}, 'channels'  , opt.channels(ind), 'setinfoinds', setinds{c,g}(:));
+                        else                       [alldata{c, g} z z z z setinfoIndices{c, g}] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', dtype, opts{:}, 'components', allinds{c,g},      'setinfoinds', setinds{c,g}(:));
+                        end;
+                    end;
+                end;
+            end;
+        else
+            for c = 1:nc
+                for g = 1:ng
+                    if ~isempty(setinds{c,g})
+                        if ~isempty(opt.channels), [alldata{c, g}] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', dtype, opts{:}, 'channels'  , opt.channels(ind));
+                        else                       [alldata{c, g}] = std_readfile( setinfo(setinds{c,g}(:)), 'measure', dtype, opts{:}, 'components', allinds{c,g});
+                        end;
                     end;
                 end;
             end;
@@ -202,10 +213,11 @@ for ind = 1:length(finalinds) % scan channels or components
             else
                 STUDY = std_readtopoclust(STUDY, ALLEEG, finalinds(ind));
                 if isfield(STUDY.cluster, 'topopol') && ~isempty(STUDY.cluster(finalinds(ind)).topopol)
+                    [ tmpstruct tmp1 tmp2 topopolcell] = std_setcomps2cell(STUDY, STUDY.cluster(finalinds(ind)).sets, STUDY.cluster(finalinds(ind)).comps, STUDY.cluster(finalinds(ind)).topopol);
                     disp('Inverting ERP component polarities based on scalp map polarities');
                     for index = 1:length(alldata(:))
                         for comps = 1:size(alldata{index},2)
-                            alldata{index}(:,comps) = alldata{index}(:,comps)*STUDY.cluster(finalinds(ind)).topopol(comps);
+                            alldata{index}(:,comps) = alldata{index}(:,comps)*topopolcell{index}(comps);
                         end;
                     end;
                 else
@@ -240,6 +252,7 @@ for ind = 1:length(finalinds) % scan channels or components
         
         if strcmpi(opt.singletrials, 'on')
              tmpstruct = setfield( tmpstruct, [ dtype 'datatrials' ], alldata);
+             tmpstruct = setfield( tmpstruct, [ 'setindstrials' ], setinfoIndices);             
              if ~isempty(opt.channels)
                   tmpstruct = setfield( tmpstruct, [ dtype 'trialinfo' ], opt.subject);
              else tmpstruct = setfield( tmpstruct, [ dtype 'trialinfo' ], opt.component);
@@ -253,7 +266,7 @@ for ind = 1:length(finalinds) % scan channels or components
         % copy results to structure
         % -------------------------
         fieldnames = { [ dtype 'data' ]  [ dtype 'freqs' ] [ dtype 'datatrials' ] ...
-                       [ dtype 'times' ] [ dtype 'trialinfo' ] 'allinds' 'setinds' };
+                       [ dtype 'times' ] [ dtype 'trialinfo' ] 'allinds' 'setinds' 'setindstrials' };
         for f = 1:length(fieldnames)
             if isfield(tmpstruct, fieldnames{f}),
                 tmpdata = getfield(tmpstruct, fieldnames{f});
@@ -287,16 +300,16 @@ if ~isempty(opt.channels)
                      tmpdat = getfield(structdat(allinds(chan)), [ dtype 'datatrials' ]);
                 else tmpdat = getfield(structdat(allinds(chan)), [ dtype 'data' ]);
                 end;
-                datavals{ind}(:,:,chan) = tmpdat{ind};
+                datavals{ind}(:,:,chan) = tmpdat{ind}; % only works for interpolated data
             end;
         
             datavals{ind} = squeeze(permute(datavals{ind}, [1 3 2])); % time elec subjects
         end;
     end;
     setinds  = structdat(allinds(1)).setinds;
-    if ~isempty(opt.subject) && strcmpi(opt.singletrials,'off')
+    if ~isempty(opt.subject)
         if strcmpi(opt.singletrials, 'on')
-            datavals = std_selsubject(datavals, opt.subject, setinds, { STUDY.design(opt.design).cell.case }, 3); 
+            error('Feature not implemented');
         else
             datavals = std_selsubject(datavals, opt.subject, setinds, { STUDY.design(opt.design).cell.case }, 2); 
         end;
