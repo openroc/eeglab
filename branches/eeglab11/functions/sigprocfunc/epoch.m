@@ -16,10 +16,9 @@
 %
 % Optional inputs:
 %   'srate'      - sampling rate in Hz for events expressed in seconds
-%   'valuelim'   - upper and lower limit of values that a trial should not
-%                overpass. If one positive value is given, consider the 
-%                opposite for lower bound. Given values are also consider
-%                outlier (if equal the trial is rejected). Default: none.
+%   'valuelim'   - [min max] data limits. If one positive value is given,
+%                the opposite value is used for lower bound. For example, 
+%                use [-50 50] to remove artifactual epoch. Default: none.
 %   'verbose'    - ['on'|'off']. Default is 'on'.
 %   'allevents'  - event vector containing the latencies of all events
 %                (not only those used for epoching). The function
@@ -113,11 +112,13 @@ for index = 1:length(events)
 	posinit = pos0+reallim(1); % compute offset
 	posend  = pos0+reallim(2); % compute offset
    
-   if floor((posinit-1)/dataframes) == floor((posend-1)/dataframes) & posinit >= 1 & posend <= datawidth % test if within boundaries
-      epochdat(:,:,index) = data(:,posinit:posend);
-      if ~isinf(g.valuelim(1)) | ~isinf(g.valuelim(2))
-          if (max(epochdat(:,:,index)) > g.valuelim(1)) & ...
-                  (max(epochdat(:,:,index)) < g.valuelim(2))
+   if floor((posinit-1)/dataframes) == floor((posend-1)/dataframes) && posinit >= 1 && posend <= datawidth % test if within boundaries
+      tmpdata = data(:,posinit:posend);
+      epochdat(:,:,index) = tmpdata;
+      if ~isinf(g.valuelim(1)) || ~isinf(g.valuelim(2))
+          tmpmin = min(reshape(tmpdata, prod(size(tmpdata)),1));
+          tmpmax = max(reshape(tmpdata, prod(size(tmpdata)),1));
+          if (tmpmin > g.valuelim(1)) && (tmpmax < g.valuelim(2))
               indexes(index) = 1;
           else
               switch g.verbose, case 'on', fprintf('Warning: event %d out of value limits\n', index); end;
